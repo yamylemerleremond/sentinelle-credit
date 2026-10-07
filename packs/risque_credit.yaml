@@ -1,0 +1,27 @@
+# Pack « risque crédit » — grille de lecture des signaux BODACC.
+# Toute la connaissance métier est ici : le code ne contient aucune règle en dur.
+
+signaux_bodacc:
+  collective:                   { poids: critique, detail: jugement }
+  radiation:                    { poids: critique }
+  conciliation:                 { poids: eleve }
+  retablissement_professionnel: { poids: eleve }
+  vente:                        { poids: moyen }
+  dpc:                          { poids: contexte, detail: depot }
+  modification:                 { poids: contexte }
+  creation:                     { poids: contexte }
+  immatriculation:              { poids: contexte }
+  _defaut:                      { poids: ignore }   # divers, inconnue, null
+
+# Gravité d'un jugement : premier motif trouvé dans « nature »,
+# comparé en minuscules et sans accents. L'ordre compte.
+gravite_jugement:
+  - { motif: "liquidation judiciaire",  niveau: 5 }
+  - { motif: "redressement judiciaire", niveau: 4 }
+  - { motif: "sauvegarde",              niveau: 3 }
+  - { motif: "plan de",                 niveau: 2 }
+  - { motif: "cloture",                 niveau: 1 }
+  - { motif: "*",                       niveau: 3 }   # nature inconnue : prudence
+
+# Personnes physiques exclues (RGPD) — voir docs/adr/0001-personnes-physiques.md
+types_personne_retenus: [pm]
