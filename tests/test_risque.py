@@ -43,8 +43,8 @@ def test_siren_fictifs_jamais_reels(portefeuille):
 
 # --- score : chaque profil est reconnu -----------------------------------------------
 
-def test_defauts_en_alerte(portefeuille):
-    assert set(niveaux_par_profil(portefeuille)["defaut"]) == {"alerte"}
+def test_defauts_en_niveau_defaut(portefeuille):
+    assert set(niveaux_par_profil(portefeuille)["defaut"]) == {"defaut"}
 
 
 def test_degradations_detectees(portefeuille):
@@ -85,7 +85,7 @@ def test_impaye_ancien_force_alerte():
     factures = [facture(DATE_REF - timedelta(days=30 * k), 2, n=k) for k in range(3, 16)]
     factures.append(facture(DATE_REF - timedelta(days=90), None, n=99))
     s = score_acheteur(factures, DATE_REF)
-    assert s["defaut_paiement"] is True and s["score"] == 1.0 and s["niveau"] == "alerte"
+    assert s["defaut_paiement"] is True and s["score"] == 1.0 and s["niveau"] == "defaut"
 
 
 # --- port CSV : aller-retour ----------------------------------------------------------
@@ -110,7 +110,7 @@ async def appeler(outil: str, args: dict) -> dict:
 async def test_outil_score_acheteur(portefeuille):
     defaillant = next(a for a in portefeuille[0] if a.profil == "defaut")
     data = await appeler("score_acheteur", {"siren": defaillant.siren})
-    assert data["comportement_paiement"]["niveau"] == "alerte"
+    assert data["comportement_paiement"]["niveau"] == "defaut"
     assert data["exposition"]["limite_credit"] == defaillant.limite_credit
 
 
@@ -122,7 +122,9 @@ async def test_acheteur_inconnu_message_clair():
 async def test_acheteurs_a_surveiller_ordre(portefeuille):
     data = await appeler("acheteurs_a_surveiller", {"niveau_min": "alerte"})
     assert data["nb_acheteurs_portefeuille"] == 50
-    assert all(a["niveau"] == "alerte" for a in data["acheteurs"])
+    niveaux = [a["niveau"] for a in data["acheteurs"]]
+    assert set(niveaux) <= {"defaut", "alerte"}
+    assert niveaux == sorted(niveaux, key=["defaut", "alerte"].index)   # défauts en tête
     profils = {a.siren: a.profil for a in portefeuille[0]}
     assert {profils[a["siren"]] for a in data["acheteurs"]} <= {"defaut", "degradation"}
 

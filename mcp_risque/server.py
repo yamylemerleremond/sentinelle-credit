@@ -63,8 +63,8 @@ def score_acheteur(siren: str) -> dict:
     """Exposition et score de dégradation des paiements d'un acheteur couvert.
 
     `comportement_paiement.score` va de 0 (comportement habituel) à 1 (forte dégradation
-    ou défaut de paiement) ; `niveau` vaut normal, vigilance, alerte, ou inconnu si
-    l'historique est trop court. Le score compare l'acheteur à son propre passé :
+    ou défaut de paiement) ; `niveau` vaut normal, vigilance, alerte, defaut (impayé
+    échu depuis plus de 60 jours), ou inconnu si l'historique est trop court. Le score compare l'acheteur à son propre passé :
     un payeur habituellement lent n'est pas en alerte pour autant.
     Dans `tendance_6_mois`, un mois avec `valeur_minimale: true` contient des factures
     encore impayées : son retard continue d'augmenter. Une valeur plus basse sur un tel
@@ -87,7 +87,7 @@ def acheteurs_a_surveiller(niveau_min: str = "vigilance", limite: int = 10) -> d
     la plus forte exposition d'abord).
 
     Args:
-        niveau_min: « alerte » pour ne garder que les cas graves, « vigilance » sinon.
+        niveau_min: « alerte » pour ne garder que les cas graves (défauts inclus), « vigilance » sinon.
         limite: nombre maximal d'acheteurs renvoyés (1 à 50).
     """
     if niveau_min not in ("alerte", "vigilance"):

@@ -99,7 +99,8 @@ def score_acheteur(factures: list[Facture], date_ref: date) -> dict:
     score = min(1.0, max(0.0, z / Z_PLEIN))
     if defaut:
         score = 1.0
-    niveau = next(nom for seuil, nom in SEUILS if score < seuil)
+    # Un défaut de paiement est un fait, pas une tendance : il a son propre niveau.
+    niveau = "defaut" if defaut else next(nom for seuil, nom in SEUILS if score < seuil)
 
     return {
         **base,
