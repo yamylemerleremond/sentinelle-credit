@@ -92,6 +92,28 @@ def niveau_gravite(nature: str | None, regles: list[dict]) -> int:
     return 3
 
 
+def _motif_trouve(texte: str | None, regles: list[dict]) -> int | None:
+    """Niveau du premier motif explicite trouvé (le joker '*' n'est pas pris ici)."""
+    t = normalise(texte or "")
+    for regle in regles:
+        if regle["motif"] != "*" and normalise(regle["motif"]) in t:
+            return regle["niveau"]
+    return None
+
+
+def evaluer_gravite(nature: str | None, complement: str | None, regles: list[dict]) -> tuple[int, str]:
+    """Gravité et sa provenance : d'abord la nature, puis le complément si la nature
+    est générique (ex. « Autre jugement et ordonnance »), sinon le niveau par défaut."""
+    niveau = _motif_trouve(nature, regles)
+    if niveau is not None:
+        return niveau, "nature"
+    niveau = _motif_trouve(complement, regles)
+    if niveau is not None:
+        return niveau, "complement"
+    defaut = next((r["niveau"] for r in regles if r["motif"] == "*"), 3)
+    return defaut, "defaut"
+
+
 def personnes(listepersonnes: Any) -> list[dict]:
     """'personne' peut être un objet seul ou une liste d'objets."""
     contenu = json_dans_chaine(listepersonnes) or {}
@@ -127,12 +149,16 @@ def parse_bodacc_record(raw: dict, pack: dict) -> CompanySignal | None:
     if regle.get("detail") == "jugement":
         j = json_dans_chaine(raw.get("jugement"))
         if j:
+            niveau, source = evaluer_gravite(
+                j.get("nature"), j.get("complementJugement"), pack["gravite_jugement"]
+            )
             jugement = Jugement(
                 famille=j.get("famille"),
                 nature=j.get("nature"),
                 date_jugement=date_fr(j.get("date")),
                 complement=j.get("complementJugement"),
-                niveau_gravite=niveau_gravite(j.get("nature"), pack["gravite_jugement"]),
+                niveau_gravite=niveau,
+                source_gravite=source,
             )
         else:
             jugement_manquant = True

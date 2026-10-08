@@ -14,6 +14,7 @@ class Jugement(BaseModel):
     date_jugement: date | None = None
     complement: str | None = None
     niveau_gravite: int = Field(ge=1, le=5)
+    source_gravite: str = "nature"       # nature | complement | defaut : pour l'explication
 
 
 class CompanySignal(BaseModel):

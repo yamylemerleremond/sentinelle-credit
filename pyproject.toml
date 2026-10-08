@@ -6,7 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "sentinelle-credit"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["pydantic", "pyyaml", "httpx"]
+dependencies = ["pydantic", "pyyaml", "httpx", "fastmcp"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
 
 [tool.setuptools.packages.find]
 include = ["mcp_donnees*"]
@@ -14,3 +17,4 @@ include = ["mcp_donnees*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -130,3 +130,32 @@ def test_sans_siren_ignore(pack):
     raw = charger("fournil_dpc_confidentiel.json")
     raw["registre"] = None
     assert parse_bodacc_record(raw, pack) is None
+
+
+# --- nature générique : on lit le complément -------------------------------------------
+
+from mcp_donnees.bodacc.parser import evaluer_gravite  # noqa: E402
+
+
+@pytest.mark.parametrize("nature, complement, attendu", [
+    ("Jugement de conversion en liquidation judiciaire", None, (5, "nature")),
+    ("Autre jugement et ordonnance", "Jugement prononçant la liquidation judiciaire", (5, "complement")),
+    ("Autre jugement et ordonnance", "ouverture d'une procédure de redressement judiciaire", (4, "complement")),
+    ("Autre jugement et ordonnance", "Ordonnance du juge-commissaire", (3, "defaut")),
+    ("Autre jugement et ordonnance", None, (3, "defaut")),
+    # la nature explicite l'emporte sur le complément
+    ("Jugement d'ouverture d'une procédure de sauvegarde", "désignant mandataire, liquidation judiciaire évitée", (3, "nature")),
+])
+def test_evaluer_gravite(nature, complement, attendu, pack):
+    assert evaluer_gravite(nature, complement, pack["gravite_jugement"]) == attendu
+
+
+def test_nature_generique_dans_un_enregistrement(pack):
+    raw = charger("fournil_dpc_confidentiel.json")
+    raw.update(familleavis="collective", jugement=json.dumps({
+        "famille": "Jugement", "nature": "Autre jugement et ordonnance",
+        "date": "1er octobre 2026",
+        "complementJugement": "Jugement d'ouverture d'une procédure de redressement judiciaire",
+    }))
+    j = parse_bodacc_record(raw, pack).jugement
+    assert (j.niveau_gravite, j.source_gravite) == (4, "complement")
