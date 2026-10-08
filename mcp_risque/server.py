@@ -7,6 +7,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
@@ -15,6 +16,7 @@ from .ports import AcheteurInconnu, CsvAdapter, MemoryAdapter, RiskDataPort
 from .score import score_acheteur as calculer_score
 
 RACINE = Path(__file__).resolve().parents[1]
+load_dotenv(RACINE / ".env")      # secrets Databricks : dans .env, jamais dans le code ni la config Claude
 ORDRE_NIVEAUX = {"defaut": 0, "alerte": 1, "vigilance": 2, "inconnu": 3, "normal": 4}
 
 mcp = FastMCP("sentinelle-risque")
@@ -28,6 +30,10 @@ def creer_port() -> RiskDataPort:
         if (dossier / "acheteurs.csv").exists():
             return CsvAdapter(dossier)
         return MemoryAdapter(*generer_portefeuille())
+    if backend == "databricks":
+        from .adapters_databricks import DatabricksAdapter, connexion_depuis_env
+        return DatabricksAdapter(connexion_depuis_env(),
+                                 os.environ.get("DATABRICKS_SCHEMA", "workspace.sentinelle"))
     raise ToolError(f"Backend de données inconnu : {backend}")
 
 
@@ -42,9 +48,10 @@ def _siren(valeur: str) -> str:
     return siren
 
 
-def _analyse(siren: str) -> dict:
-    acheteur = _port.get_acheteur(siren)
-    score = calculer_score(_port.get_factures(siren), _date_ref)
+def _analyse(siren: str, acheteur=None, factures=None) -> dict:
+    acheteur = acheteur or _port.get_acheteur(siren)
+    factures = _port.get_factures(siren) if factures is None else factures
+    score = calculer_score(factures, _date_ref)
     return {
         "siren": siren,
         "denomination": acheteur.denomination,
@@ -95,7 +102,9 @@ def acheteurs_a_surveiller(niveau_min: str = "vigilance", limite: int = 10) -> d
     seuil = ORDRE_NIVEAUX[niveau_min]
     limite = max(1, min(limite, 50))
 
-    analyses = [_analyse(a.siren) for a in _port.lister_acheteurs()]
+    # Deux lectures pour tout le portefeuille, au lieu de deux par acheteur.
+    factures = _port.get_toutes_factures()
+    analyses = [_analyse(a.siren, a, factures.get(a.siren, [])) for a in _port.lister_acheteurs()]
     retenus = [a for a in analyses if ORDRE_NIVEAUX[a["comportement_paiement"]["niveau"]] <= seuil
                or a["comportement_paiement"]["defaut_paiement"]]
     retenus.sort(key=lambda a: (ORDRE_NIVEAUX[a["comportement_paiement"]["niveau"]],

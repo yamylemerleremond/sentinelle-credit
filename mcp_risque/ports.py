@@ -20,6 +20,9 @@ class RiskDataPort(Protocol):
     def get_acheteur(self, siren: str) -> Acheteur: ...
     def get_factures(self, siren: str) -> list[Facture]: ...
     def lister_acheteurs(self) -> list[Acheteur]: ...
+    def get_toutes_factures(self) -> dict[str, list[Facture]]:
+        """Toutes les factures, groupées par SIREN : une seule lecture pour un balayage du portefeuille."""
+        ...
 
 
 class MemoryAdapter:
@@ -42,6 +45,9 @@ class MemoryAdapter:
 
     def lister_acheteurs(self) -> list[Acheteur]:
         return list(self._acheteurs.values())
+
+    def get_toutes_factures(self) -> dict[str, list[Facture]]:
+        return {siren: list(f) for siren, f in self._factures.items()}
 
 
 class CsvAdapter(MemoryAdapter):
