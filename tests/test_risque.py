@@ -125,3 +125,23 @@ async def test_acheteurs_a_surveiller_ordre(portefeuille):
     assert all(a["niveau"] == "alerte" for a in data["acheteurs"])
     profils = {a.siren: a.profil for a in portefeuille[0]}
     assert {profils[a["siren"]] for a in data["acheteurs"]} <= {"defaut", "degradation"}
+
+
+# --- tendance : un impayé récent n'est pas une amélioration ---------------------------
+
+def test_mois_impaye_marque_comme_minimum(portefeuille):
+    """Bug vu en démo : le dernier mois d'un défaillant affichait 15 j, lu comme une
+    amélioration alors que les factures étaient simplement impayées et récentes."""
+    acheteurs, _, par_siren = portefeuille
+    defaillant = next(a for a in acheteurs if a.profil == "defaut")
+    tendance = score_acheteur(par_siren[defaillant.siren], DATE_REF)["tendance_6_mois"]
+    dernier = tendance[-1]
+    assert dernier["valeur_minimale"] is True
+    assert dernier["impayes_en_cours"] > 0
+
+
+def test_mois_paye_pas_marque(portefeuille):
+    acheteurs, _, par_siren = portefeuille
+    sain = next(a for a in acheteurs if a.profil == "sain")
+    tendance = score_acheteur(par_siren[sain.siren], DATE_REF)["tendance_6_mois"]
+    assert not any(m["valeur_minimale"] for m in tendance[:-1])

@@ -50,6 +50,24 @@ def retards_mensuels(factures: list[Facture], date_ref: date) -> dict[tuple[int,
     return {cle: sommes[cle] / poids[cle] for cle in sommes}
 
 
+def tendance(factures: list[Facture], mensuels: dict, mois: list[tuple[int, int]], date_ref: date) -> list[dict]:
+    """Retard par mois, en signalant les mois qui contiennent des impayés : leur valeur
+    est un MINIMUM (l'impayé continue de vieillir), jamais le signe d'une amélioration."""
+    impayes_par_mois = defaultdict(float)
+    for f in factures:
+        if f.date_paiement is None and f.date_echeance <= date_ref:
+            impayes_par_mois[_cle_mois(f.date_echeance)] += f.montant
+    return [
+        {
+            "mois": f"{a}-{m:02d}",
+            "retard_jours": round(mensuels[(a, m)], 1),
+            "impayes_en_cours": round(impayes_par_mois[(a, m)], 2),
+            "valeur_minimale": impayes_par_mois[(a, m)] > 0,
+        }
+        for a, m in mois if (a, m) in mensuels
+    ]
+
+
 def score_acheteur(factures: list[Facture], date_ref: date) -> dict:
     mensuels = retards_mensuels(factures, date_ref)
     calendrier = _mois_precedents(date_ref, MOIS_RECENTS + MOIS_REFERENCE)
@@ -65,7 +83,7 @@ def score_acheteur(factures: list[Facture], date_ref: date) -> dict:
         "impayes_echus": montant_impaye,
         "retard_max_impaye_jours": retard_max_impaye,
         "defaut_paiement": defaut,
-        "tendance_6_mois": [round(mensuels[m], 1) for m in calendrier[-6:] if m in mensuels],
+        "tendance_6_mois": tendance(factures, mensuels, calendrier[-6:], date_ref),
     }
 
     if len(reference) < MOIS_REFERENCE_MIN or not recents:

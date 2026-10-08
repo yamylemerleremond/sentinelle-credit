@@ -66,6 +66,9 @@ def score_acheteur(siren: str) -> dict:
     ou défaut de paiement) ; `niveau` vaut normal, vigilance, alerte, ou inconnu si
     l'historique est trop court. Le score compare l'acheteur à son propre passé :
     un payeur habituellement lent n'est pas en alerte pour autant.
+    Dans `tendance_6_mois`, un mois avec `valeur_minimale: true` contient des factures
+    encore impayées : son retard continue d'augmenter. Une valeur plus basse sur un tel
+    mois n'est JAMAIS une amélioration, seulement des impayés plus récents.
     Données internes FICTIVES de démonstration. Ne jamais inventer un chiffre absent.
 
     Args:
